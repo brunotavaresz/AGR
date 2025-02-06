@@ -1,0 +1,359 @@
+PC Londres:
+ip 192.122.12.2/25 192.122.12.1
+save
+
+PC Vigo:
+ip 192.90.12.2/25 192.90.12.1
+save
+
+PC CompanyLisboa:
+ip 192.88.125.130/26 192.88.125.129
+save
+
+PC CompanyAveiro:
+ip 192.88.125.194/26 192.88.125.193
+save
+
+PC CompanyLeiria:
+ip 192.88.125.66/26 192.88.125.65
+save
+
+PC A8657:
+ip 192.88.123.1/26 192.88.123.3
+save
+
+Router Londres:
+conf t
+int f0/1 
+no shut
+ip address 192.122.12.1 255.255.255.128
+int f0/0 
+no shut
+ip address 192.1.1.137 255.255.255.252
+int f1/0 
+no shut
+ip address 192.1.1.133 255.255.255.252
+int f2/0
+no shut
+ip address 192.1.1.141 255.255.255.252
+router ospf 1
+network 192.122.12.0 0.0.0.127 area 0
+exit
+
+router bgp 4589
+neighbor 192.1.1.134 remote-as 8657
+neighbor 192.1.1.142 remote-as 8657
+neighbor 192.1.1.138 remote-as 4891
+network 192.122.12.0 mask 255.255.255.128
+end
+write
+
+conf t
+crypto isakmp policy 30
+authentication pre-share
+crypto isakmp key mypassphrase address 192.88.123.7
+crypto ipsec transform-set MYTRANSFORM esp-aes 256 esp-sha-hmac
+crypto ipsec profile MYPROFILE
+set transform-set MYTRANSFORM
+no interface Tunnel1
+interface Tunnel1
+ip address 10.0.0.3 255.255.255.252
+tunnel source 192.1.1.141
+tunnel destination 192.88.123.7
+tunnel mode ipsec ipv4
+tunnel protection ipsec profile MYPROFILE
+exit
+router ospf 1
+network 10.0.0.0 0.0.0.3 area 0
+end
+conf t
+access-list 101 permit ip 192.122.12.0 0.0.0.127 192.88.125.64 0.0.0.63
+route-map PBR permit 30
+match ip address 101
+set interface Tunnel1
+interface f2/0
+ip policy route-map PBR
+end
+write
+
+
+
+Router Vigo:
+conf t
+int f0/0
+no shut
+ip address 192.1.1.138 255.255.255.252
+int f0/1
+no shut
+ip address 192.1.1.145 255.255.255.252
+int f1/0
+no shut
+ip address 192.90.12.1 255.255.255.0
+end
+write
+conf t
+ip as-path access-list 1 permit ^$
+route-map routes-out
+match as-path 1
+router bgp 4891
+neighbor 192.1.1.146 remote-as 8657
+neighbor 192.1.1.146 route-map routes-out out
+neighbor 192.1.1.137 remote-as 4589
+neighbor 192.1.1.137 route-map routes-out out
+network 192.90.12.0 mask 255.255.255.0
+end
+write
+
+Router Porto:
+conf t
+int f0/0 
+no shut
+ip address 192.1.1.146 255.255.255.252
+int f0/1
+no shut
+ip address 192.1.1.134 255.255.255.252
+int f1/0 
+no shut
+ip address 192.88.123.3 255.255.255.192
+end
+write
+conf t
+router bgp 8657
+neighbor 192.88.123.4 remote-as 8657
+neighbor 192.88.123.5 remote-as 8657
+neighbor 192.88.123.6 remote-as 8657
+neighbor 192.88.124.6 remote-as 8657
+neighbor 192.1.1.145 remote-as 4891
+neighbor 192.1.1.133 remote-as 4589
+neighbor 192.88.123.6 next-hop-self
+network 192.88.123.0 mask 255.255.255.192
+end
+write
+
+Router Lisboa:
+conf t
+int f1/0 
+no shut
+ip address 192.88.124.5 255.255.255.252
+int f0/1
+no shut
+ip address 192.1.1.142 255.255.255.252
+int f2/0 
+no shut
+ip address 192.88.123.4 255.255.255.192
+end
+write
+conf t 
+router ospf 1
+network 192.88.123.0 0.0.0.63 area 0
+network 192.88.124.4 0.0.0.3 area 0
+redistribute bgp 8657 subnets
+end
+write
+conf t
+router bgp 8657
+neighbor 192.88.123.5 remote-as 8657
+neighbor 192.88.123.3 remote-as 8657
+neighbor 192.88.123.6 remote-as 8657
+neighbor 192.88.123.7 remote-as 8657
+neighbor 192.88.124.6 remote-as 8657
+neighbor 192.1.1.141 remote-as 4589
+neighbor 192.88.124.2 remote-as 8657
+neighbor 192.88.123.5 next-hop-self
+neighbor 192.88.123.3 next-hop-self
+neighbor 192.88.123.6 next-hop-self
+neighbor 192.88.123.7 next-hop-self
+neighbor 192.88.124.6 next-hop-self
+neighbor 192.88.124.2 next-hop-self
+network 192.88.123.0 mask 255.255.255.192
+
+redistribute connected
+redistribute ospf 1
+router ospf 1
+redistribute bgp 8657 subnets
+end
+write
+
+Router Coimbra:
+conf t
+int f0/0 
+no shut
+ip address 192.88.123.5 255.255.255.192
+end
+write
+conf t 
+router bgp 8657
+neighbor 192.88.123.4 remote-as 8657
+network 192.88.123.0 mask 255.255.255.192
+end
+write
+
+Router Aveiro:
+conf t
+int f0/1 
+no shut
+ip address 192.88.123.6 255.255.255.192
+int f1/0
+no shut
+ip address 192.88.124.1 255.255.255.252
+end
+write
+conf t 
+router ospf 1
+distance ospf external 250
+network 192.88.123.0 0.0.0.63 area 0
+network 192.88.124.0 0.0.0.3 area 0
+end 
+write
+conf t
+router bgp 8657
+neighbor 192.88.123.3 remote-as 8657
+network 192.88.123.0 mask 255.255.255.192
+redistribute connected
+redistribute ospf 1
+router ospf 1
+redistribute bgp 8657 subnets
+end
+write
+
+Router CompanyLisboa:
+conf t
+int f0/0
+no shut
+ip address 192.88.124.6 255.255.255.252
+int f0/1
+no shut
+ip address 192.88.125.129 255.255.255.192
+end
+write
+
+conf t 
+router ospf 1
+network 192.88.125.0 0.0.0.63 area 0
+network 192.88.124.0 0.0.0.3 area 0
+network 192.88.124.6 0.0.0.3 area 0
+network 192.88.125.129 0.0.0.63 area 0
+end
+write
+
+conf t
+interface Tunnel0
+ip address 10.0.0.1 255.255.255.252
+tunnel source f0/1
+tunnel destination 192.88.125.193
+tunnel mode gre ip   ! Utilizando GRE em vez de IPsec (sem criptografia)
+bandwidth 2048
+tunnel bandwidth receive 2048
+tunnel bandwidth transmit 2048
+exit
+
+conf t
+access-list 101 permit ip 192.88.125.128 0.0.0.63 192.88.125.192 0.0.0.63
+route-map PBR permit 10
+match ip address 101
+set interface Tunnel0
+interface f0/1
+ip policy route-map PBR
+end
+write
+router ospf 1
+network 10.0.0.0 0.0.0.3 area 0
+exit
+end
+write
+
+Router CompanyAveiro:
+conf t
+int f0/0
+no shut
+ip address 192.88.124.2 255.255.255.252
+int f0/1
+no shut
+ip address 192.88.125.193 255.255.255.192
+end
+write
+
+conf t 
+router ospf 1
+network 192.88.125.192 0.0.0.63 area 0
+network 192.88.125.0 0.0.0.63 area 0
+network 192.88.124.0 0.0.0.3 area 0
+end
+write
+
+conf t
+interface Tunnel0
+ip address 10.0.0.2 255.255.255.252
+tunnel source f0/1
+tunnel destination 192.88.125.129
+tunnel mode gre ip
+bandwidth 2048
+tunnel bandwidth receive 2048
+tunnel bandwidth transmit 2048
+exit
+
+conf t
+access-list 101 permit ip 192.88.125.192 0.0.0.63 192.88.125.128 0.0.0.63
+route-map PBR permit 10
+match ip address 101
+set interface Tunnel0
+interface f0/1
+ip policy route-map PBR
+end
+write
+
+router ospf 1
+network 10.0.0.0 0.0.0.3 area 0
+exit
+end
+write
+
+
+Router CompanyLeiria:
+conf t
+int f0/0
+no shut
+ip address 192.88.123.7 255.255.255.192
+int f0/1
+no shut
+ip address 192.88.125.65 255.255.255.192
+
+
+router bgp 8657
+neighbor 192.88.123.3 remote-as 8657
+neighbor 192.88.123.4 remote-as 8657
+neighbor 192.88.123.5 remote-as 8657
+neighbor 192.88.124.6 remote-as 8657
+neighbor 192.88.124.2 remote-as 8657
+neighbor 192.88.124.6 remote-as 8657
+network 192.88.125.64 mask  255.255.255.192
+end
+write
+
+conf t
+crypto isakmp policy 30
+authentication pre-share
+crypto isakmp key mypassphrase address 192.1.1.141
+crypto ipsec transform-set MYTRANSFORM esp-aes 256 esp-sha-hmac
+crypto ipsec profile MYPROFILE
+set transform-set MYTRANSFORM
+interface Tunnel1
+ip address 10.0.0.4 255.255.255.252
+tunnel source 192.88.123.7
+tunnel destination 192.1.1.141
+tunnel mode ipsec ipv4
+tunnel protection ipsec profile MYPROFILE
+
+router ospf 1
+network 10.0.0.0 0.0.0.3 area 0
+end
+conf t
+access-list 101 permit ip 192.88.125.64 0.0.0.63 192.122.12.0 0.0.0.127
+route-map PBR permit 30
+match ip address 101
+set interface Tunnel1
+interface f2/0
+ip policy route-map PBR
+end
+write
+

@@ -1,0 +1,27 @@
+1.A
+
+2.A
+
+3.C
+
+4.Verdadeiro
+
+5.Falso
+
+6.D
+
+7.D
+
+8.False
+
+9.B
+
+10.C
+
+11.
+    Falso
+    Falso
+    Falso
+    Falso
+
+12.C
